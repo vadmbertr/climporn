@@ -71,6 +71,25 @@ fprf=`basename ${FPREF}`
 if [ "${FPREF}" = "" ]; then usage; fi
 
 
+# PDF conversion to PNG:
+if [ "$FIMG" = "pdf" ]; then
+  if ! command -v pdftoppm &> /dev/null; then
+    echo "Dude! Install 'poppler' in order to handle pdf inputs! Sorry..."
+    exit
+  fi
+
+  to_png() {
+    file=$1
+    outputname=$(basename "$file" .pdf)
+    pdftoppm $file $outputname -png -f 1 -singlefile -rx 600 -ry 600
+  }
+  export -f to_png
+  find . -name "${FPREF}*.${FIMG}" -type f | xargs -n 1 -P 0 -I {}  bash -c 'to_png "$@"' _ {}
+
+  FIMG="png"
+fi
+
+
 # Video filter stuff:
 VFLTR="-vf scale='-2:${HEIGHT}'"
 if [ ${PIXELIZED} -eq 1 ]; then VFLTR="-vf scale='-2:${HEIGHT}:flags=neighbor'"; fi
