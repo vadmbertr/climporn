@@ -7,6 +7,7 @@
 FPS_O=25
 
 # Defaults:
+FPREF=""
 FIMG="png"
 HEIGHT="1080"
 CODEC="x264"
@@ -22,9 +23,10 @@ PIXELIZED=0
 usage()
 {
     echo
-    echo "USAGE: `basename ${0}` -i <common_prefix_image_files> (options)"
+    echo "USAGE: `basename ${0}` (options)"
     echo
     echo "   Available options are:"
+    echo "      -i: common prefix of images (default='${FPREF}')"
     echo "      -t: format of images (default='${FIMG}')"
     echo "      -h: height (pixels) of video to create (default='${HEIGHT}')"
     echo "      -c: codec for video (default='${CODEC})' [x264, x265, ...]"
@@ -68,9 +70,6 @@ done
 
 fprf=`basename ${FPREF}`
 
-if [ "${FPREF}" = "" ]; then usage; fi
-
-
 # PDF conversion to PNG:
 if [ "$FIMG" = "pdf" ]; then
   if ! command -v pdftoppm &> /dev/null; then
@@ -80,15 +79,25 @@ if [ "$FIMG" = "pdf" ]; then
 
   to_png() {
     file=$1
-    outputname=$(basename "$file" .pdf)
-    pdftoppm $file $outputname -png -f 1 -singlefile -rx 600 -ry 600
+    outputname="${file%.pdf}"
+    pdftoppm ${file} ${outputname} -png -f 1 -singlefile -rx 600 -ry 600
   }
   export -f to_png
-  find . -name "${FPREF}*.${FIMG}" -type f | xargs -n 1 -P 0 -I {}  bash -c 'to_png "$@"' _ {}
+  
+  pdfpattern="${FPREF}*.${FIMG}"
+
+  pdfdir="${pdfpattern%/*}"
+  if [ "$pdfdir" == "${pdfpattern}" ]; then
+    pdfdir="."
+    filepattern="${pdfpattern}"
+  else
+    filepattern="${pdfpattern##*/}"
+  fi
+
+  find "${pdfdir}" -name "${filepattern}" -type f | xargs -n 1 -P 4 -I {}  bash -c 'to_png "$@"' _ {}
 
   FIMG="png"
 fi
-
 
 # Video filter stuff:
 VFLTR="-vf scale='-2:${HEIGHT}'"
